@@ -191,7 +191,7 @@ class EMongoClient extends CApplicationComponent
 	 */
 	public function connect()
 	{
-		if(!extension_loaded('mongo')){
+		if(!(extension_loaded('mongo') || extension_loaded('mongodb'))){
 			throw new EMongoException(
 				yii::t(
 					'yii', 
@@ -199,32 +199,53 @@ class EMongoClient extends CApplicationComponent
 				)
 			);
 		}
-		
-		// We don't need to throw useless exceptions here, the MongoDB PHP Driver has its own checks and error reporting
-		// Yii will easily and effortlessly display the errors from the PHP driver, we should only catch its exceptions if
-		// we wanna add our own custom messages on top which we don't, the errors are quite self explanatory
-		if(version_compare(phpversion('mongo'), '1.3.0', '<')){
-			$this->_mongo = new Mongo($this->server, $this->options);
-			$this->_mongo->connect();
-			
-			if($this->setSlaveOkay){
-				$this->_mongo->setSlaveOkay($this->setSlaveOkay);
-			}
-		}else{
-			$this->_mongo = new MongoClient($this->server, $this->options);
-			
-			if(is_array($this->RP)){
-				$const = $this->RP[0];
-				$opts = $this->RP[1];
-				
-				if(!empty($opts)){ 
-					// I do this due to a bug that exists in some PHP driver versions
-					$this->_mongo->setReadPreference(constant('MongoClient::' . $const), $opts);
-				}else{
-					$this->_mongo->setReadPreference(constant('MongoClient::' . $const));
-				}
-			}
-		}
+
+        if (extension_loaded('mongo'))
+        {
+            // We don't need to throw useless exceptions here, the MongoDB PHP Driver has its own checks and error reporting
+            // Yii will easily and effortlessly display the errors from the PHP driver, we should only catch its exceptions if
+            // we wanna add our own custom messages on top which we don't, the errors are quite self explanatory
+            if(version_compare(phpversion('mongo'), '1.3.0', '<')){
+                $this->_mongo = new Mongo($this->server, $this->options);
+                $this->_mongo->connect();
+
+                if($this->setSlaveOkay){
+                    $this->_mongo->setSlaveOkay($this->setSlaveOkay);
+                }
+            }else{
+                $this->_mongo = new MongoClient($this->server, $this->options);
+
+                if(is_array($this->RP)){
+                    $const = $this->RP[0];
+                    $opts = $this->RP[1];
+
+                    if(!empty($opts)){
+                        // I do this due to a bug that exists in some PHP driver versions
+                        $this->_mongo->setReadPreference(constant('MongoClient::' . $const), $opts);
+                    }else{
+                        $this->_mongo->setReadPreference(constant('MongoClient::' . $const));
+                    }
+                }
+            }
+        }
+        else if (extension_loaded('mongodb'))
+        {
+            $this->_mongo = new MongoClient($this->server, $this->options);
+
+            if(is_array($this->RP)){
+                $const = $this->RP[0];
+                $opts = $this->RP[1];
+
+                if(!empty($opts)){
+                    // I do this due to a bug that exists in some PHP driver versions
+                    $this->_mongo->setReadPreference(constant('MongoClient::' . $const), $opts);
+                }else{
+                    $this->_mongo->setReadPreference(constant('MongoClient::' . $const));
+                }
+            }
+        }
+
+
 	}
 	
 	/**
